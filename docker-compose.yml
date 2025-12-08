@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Frontends
+  manufacturer-frontend:
+    build: ./EY-Manufacturer-frontend
+    ports:
+      - "3002:80"
+    depends_on:
+      - backend
+
+  oem-frontend:
+    build: ./EY-OEM-frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+
+  customer-frontend:
+    build: ./EY-customer-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  # Backend
+  backend:
+    build: ./EY-Backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db/ey_telematics_db
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    depends_on:
+      - db
+
+  # Database
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=ey_telematics_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
