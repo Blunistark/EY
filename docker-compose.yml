@@ -6,6 +6,8 @@ services:
     build: ./EY-Manufacturer-frontend
     ports:
       - "3002:80"
+    networks:
+      - ey-network
     depends_on:
       - backend
 
@@ -13,6 +15,8 @@ services:
     build: ./EY-OEM-frontend
     ports:
       - "3001:80"
+    networks:
+      - ey-network
     depends_on:
       - backend
 
@@ -20,6 +24,8 @@ services:
     build: ./EY-customer-frontend
     ports:
       - "3000:80"
+    networks:
+      - ey-network
     depends_on:
       - backend
 
@@ -33,6 +39,8 @@ services:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
     depends_on:
       - db
+    networks:
+      - ey-network
 
   # Database
   db:
@@ -45,6 +53,28 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ey-network
+
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=password
+      - WEBHOOK_URL=http://localhost:5678/
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - ey-network
 
 volumes:
   postgres_data:
+  n8n_data:
+
+
+networks:
+  ey-network:
+    driver: bridge

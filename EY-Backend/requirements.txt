@@ -10,5 +10,6 @@ websockets
 asyncpg
 google-generativeai
 faker
+httpx
 dateparser
 

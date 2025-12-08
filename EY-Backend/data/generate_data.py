@@ -1,81 +1,96 @@
+import sys
+import os
 import random
 from datetime import datetime, timedelta
 from faker import Faker
-from sqlalchemy.orm import Session
-from models.database import SessionLocal, engine
-from models.schema import User, Vehicle, Telemetry, ServiceBooking, Defect
-import time
+import uuid
+
+# Add parent directory to path to import models
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from models.database import SessionLocal
+from models.schema import User, Vehicle, PredictedIssue, Appointment
 
 fake = Faker()
 
-def create_users(db: Session, num_users=5):
+def generate_data():
+    db = SessionLocal()
+    
+    # Create Users
+    print("Generating Users...")
     users = []
-    print(f"Creating {num_users} users...")
-    for _ in range(num_users):
+    roles = ['CUSTOMER', 'OEM', 'MANUFACTURER']
+    for _ in range(10):
         user = User(
+            id=str(uuid.uuid4()),
             email=fake.email(),
             full_name=fake.name(),
-            role='customer'
+            role=random.choice(roles)
         )
-        db.add(user)
         users.append(user)
+        db.add(user)
     db.commit()
-    return users
 
-def create_vehicles(db: Session, users):
+    # Create Vehicles
+    print("Generating Vehicles...")
     vehicles = []
-    models = ['Model S', 'Model 3', 'Model X', 'Model Y', 'Cybertruck']
-    print(f"Creating vehicles for users...")
-    for user in users:
+    models = ['Model X', 'Model Y', 'Model Z']
+    for i in range(20):
+        owner = random.choice(users)
         vehicle = Vehicle(
+            id=str(uuid.uuid4()),
+            user_id=owner.id,
+            model=random.choice(models),
+            variant='Standard',
+            year=random.randint(2020, 2024),
+            registration=fake.license_plate(),
             vin=fake.vin(),
-            owner_id=user.id,
-            model_name=random.choice(models),
-            year=random.randint(2018, 2024),
-            license_plate=fake.license_plate()
+            mileage=random.randint(1000, 50000),
+            last_service_date=datetime.now() - timedelta(days=random.randint(0, 365))
         )
-        db.add(vehicle)
         vehicles.append(vehicle)
-    db.commit()
-    return vehicles
-
-def create_telemetry(db: Session, vehicles, num_points=50):
-    print(f"Generating telemetry data...")
-    for vehicle in vehicles:
-        base_time = datetime.utcnow() - timedelta(days=1)
-        for i in range(num_points):
-            # Simulate some issues
-            brake_wear = random.uniform(0, 10)
-            if random.random() < 0.1: # 10% chance of high brake wear
-                brake_wear = random.uniform(80, 100)
-            
-            telemetry = Telemetry(
-                vehicle_id=vehicle.vin,
-                timestamp=base_time + timedelta(minutes=i*15),
-                speed=random.uniform(0, 120),
-                rpm=random.uniform(1000, 5000),
-                engine_temp=random.uniform(80, 110),
-                battery_level=random.uniform(20, 100),
-                brake_wear=brake_wear,
-                tire_pressure_fl=random.uniform(30, 35),
-                tire_pressure_fr=random.uniform(30, 35),
-                tire_pressure_rl=random.uniform(30, 35),
-                tire_pressure_rr=random.uniform(30, 35),
-                latitude=float(fake.latitude()),
-                longitude=float(fake.longitude())
-            )
-            db.add(telemetry)
+        db.add(vehicle)
     db.commit()
 
-def main():
-    db = SessionLocal()
-    try:
-        users = create_users(db)
-        vehicles = create_vehicles(db, users)
-        create_telemetry(db, vehicles)
-        print("Data generation complete!")
-    finally:
-        db.close()
+    # Create Predicted Issues (Defects)
+    print("Generating Predicted Issues...")
+    components = ['BRAKE_PADS', 'BATTERY', 'ENGINE_OIL', 'TIRES', 'TRANSMISSION']
+    severities = ['LOW', 'MEDIUM', 'HIGH']
+    for _ in range(30):
+        vehicle = random.choice(vehicles)
+        issue = PredictedIssue(
+            id=str(uuid.uuid4()),
+            vehicle_id=vehicle.id,
+            component=random.choice(components),
+            failure_probability=random.uniform(0.1, 0.9),
+            severity=random.choice(severities),
+            time_horizon=f"{random.randint(1, 30)}_days",
+            confidence=random.uniform(0.7, 0.99),
+            reason=fake.sentence(),
+            overall_health='AMBER'
+        )
+        db.add(issue)
+    db.commit()
+
+    # Create Appointments (Service Bookings)
+    print("Generating Appointments...")
+    statuses = ['CONFIRMED', 'COMPLETED', 'CANCELLED']
+    for _ in range(15):
+        vehicle = random.choice(vehicles)
+        appt = Appointment(
+            id=str(uuid.uuid4()),
+            vehicle_id=vehicle.id,
+            user_id=vehicle.user_id,
+            service_center_id=f"CENTER-{random.randint(1, 5)}",
+            appointment_date=datetime.now() + timedelta(days=random.randint(1, 30)),
+            status=random.choice(statuses),
+            confirmation_code=fake.bothify(text='APT-####')
+        )
+        db.add(appt)
+    db.commit()
+
+    print("Data generation complete.")
+    db.close()
 
 if __name__ == "__main__":
-    main()
+    generate_data()
